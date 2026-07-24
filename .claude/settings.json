@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat >> *)",
+      "Bash(node /tmp/debug_cpp2.mjs)",
+      "Bash(curl -s http://localhost:5173/manifest.webmanifest)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); console.log\\('manifest JSON valid'\\)\")",
+      "Bash(curl -s http://localhost:5173/sw.js -o /tmp/sw.js)",
+      "Bash(node --check /tmp/sw.js)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}

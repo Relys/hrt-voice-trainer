@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": [
+    "src/vite-env.d.ts",
+    "src/main.ts",
+    "src/render/**/*.ts",
+    "src/audio/capture.ts",
+    "src/audio/devices.ts",
+    "src/audio/noise-calibration.ts",
+    "src/audio/playback.ts",
+    "src/audio/precompute.ts",
+    "src/dsp/**/*.ts",
+    "src/shared/**/*.ts",
+    "src/state/**/*.ts",
+    "src/ui/**/*.ts",
+    "src/storage/**/*.ts"
+  ]
+}

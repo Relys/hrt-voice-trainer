@@ -1,0 +1,64 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      # <user>.github.io repos are root pages (base "/"); anything else is a project page,
+      # served under "/<repo-name>/" — vite.config.ts and scripts/inject-precache.mjs both read
+      # this env var so every root-relative path in the build (asset URLs, manifest, the service
+      # worker's own registration + precache list) resolves under the right subpath.
+      - name: Determine GitHub Pages base path
+        id: base
+        run: |
+          REPO_NAME="${{ github.event.repository.name }}"
+          if [[ "$REPO_NAME" == *.github.io ]]; then
+            echo "path=/" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=/$REPO_NAME/" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: npm run build
+        env:
+          GITHUB_PAGES_BASE: ${{ steps.base.outputs.path }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

@@ -1,0 +1,1289 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+
+  /* Trans pride flag palette, used as accents/highlights over a neutral dark base
+     rather than literal backgrounds — keeps a data-dense UI readable. */
+  --flag-blue: #5bcefa;
+  --flag-pink: #f5a9b8;
+  --flag-white: #ffffff;
+  --flag-gradient: linear-gradient(90deg, var(--flag-blue), var(--flag-pink), var(--flag-white), var(--flag-pink), var(--flag-blue));
+
+  --bg: #0b0d12;
+  --surface: #151822;
+  --surface-alt: #1b1f2b;
+  --surface-hover: #232838;
+  --border: #262b38;
+  --border-strong: #333a4a;
+  --text: #eef1f6;
+  --text-muted: #8d94a6;
+  --accent: var(--flag-blue);
+  --accent-2: var(--flag-pink);
+  --radius: 8px;
+}
+
+/* Light theme: only the surrounding UI chrome switches — canvases (spectrogram, vowel chart)
+   deliberately stay on their own dark background regardless, same as any video/image viewer,
+   since the color ramp is designed against black and a specific data visualization isn't "page
+   content" that should follow the reader's theme. --accent/--accent-2 are darkened versions of
+   the flag colors specifically for text/outline legibility against a light background — the flag
+   colors themselves (used for the decorative gradient bar) are left unchanged. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f4f8;
+  --surface: #ffffff;
+  --surface-alt: #eceef4;
+  --border: #dcdfe6;
+  --border-strong: #c3c7d2;
+  --text: #14161c;
+  --text-muted: #5b6172;
+  --accent: #0d7a9e;
+  --accent-2: #b23b63;
+  --surface-hover: #e4e7f0;
+}
+
+/* Several elements below set `display` on a class that also carries the `hidden` attribute
+   (flex rows, the modal backdrops) — an author-stylesheet display rule otherwise beats the
+   browser's default `[hidden] { display: none }`, regardless of selector specificity. This
+   keeps `hidden` authoritative everywhere in the app rather than patching each selector. */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#app {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+header {
+  margin-bottom: 1.25rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  background: var(--flag-gradient);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  margin: 0.25rem 0 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    transform 80ms ease;
+}
+
+button:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#start-btn {
+  border-color: var(--flag-blue);
+  color: var(--flag-blue);
+}
+
+#start-btn:hover {
+  background: rgba(91, 206, 250, 0.12);
+}
+
+#settings-toggle-btn[aria-expanded="true"] {
+  background: rgba(245, 169, 184, 0.16);
+  border-color: var(--flag-pink);
+  color: var(--flag-pink);
+}
+
+/* Hidden on desktop — the four panel-launcher buttons render inline via
+   .mobile-menu-group's `display: contents`, same as if this wrapper didn't exist. */
+.mobile-menu-toggle-btn {
+  display: none;
+}
+
+.mobile-menu-group {
+  display: contents;
+}
+
+.kbd-hint {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.status {
+  color: var(--accent);
+  font-family: monospace;
+  margin-left: auto;
+}
+
+/* Banner offering to install the app to the home screen / app list */
+.install-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--flag-blue);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.install-banner span {
+  flex: 1 1 auto;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.install-banner #install-btn {
+  background: var(--flag-blue);
+  border-color: var(--flag-blue);
+  color: #05202b;
+  font-weight: 600;
+}
+
+.install-banner #install-dismiss-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+.install-banner #install-dismiss-btn:hover {
+  color: var(--text);
+  background: none;
+}
+
+/* Banner showing the Practice Card currently being read, if any */
+.active-card-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--flag-pink);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.active-card-banner #active-card-text {
+  flex: 1 1 auto;
+  font-size: 0.95rem;
+}
+
+.active-card-banner button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+.active-card-banner button:hover {
+  color: var(--text);
+  background: none;
+}
+
+.custom-card-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 0.6rem;
+}
+
+/* Playback transport (shown only while replaying a saved recording) */
+.playback-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Custom track/thumb styling rather than relying on native range rendering, which doesn't
+   reliably follow color-scheme across browsers — this is what was rendering black in light mode. */
+.playback-bar input[type="range"],
+.settings-drawer input[type="range"] {
+  flex: 1 1 auto;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  outline: none;
+}
+
+.playback-bar input[type="range"]::-webkit-slider-thumb,
+.settings-drawer input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--flag-blue);
+  cursor: pointer;
+}
+
+.playback-bar input[type="range"]::-moz-range-thumb,
+.settings-drawer input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--flag-blue);
+  border: none;
+  cursor: pointer;
+}
+
+.playback-bar input[type="range"]::-moz-range-track,
+.settings-drawer input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: var(--surface-alt);
+  border-radius: 2px;
+}
+
+.playback-time {
+  font-family: monospace;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+select {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  max-width: 240px;
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+/* HUD */
+.hud-row {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.hud {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.7rem 1.1rem;
+  font-family: monospace;
+  position: relative;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.vowel-chart-panel {
+  flex: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.vowel-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  align-self: stretch;
+}
+
+.vowel-chart-mode-btn {
+  margin-left: auto;
+  width: auto;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+}
+
+.vowel-chart-anchor-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+}
+
+.vowel-chart-anchor-row button:not(.info-btn) {
+  width: auto;
+  flex: 1 1 auto;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.72rem;
+}
+
+#vowel-chart {
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.acoustic-proximity-panel {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--flag-pink);
+  border-radius: var(--radius);
+  padding: 0.5rem;
+  width: 210px;
+}
+
+.acoustic-proximity-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  align-self: stretch;
+}
+
+.acoustic-proximity-readout {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  align-self: stretch;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.acoustic-proximity-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-self: stretch;
+}
+
+.prox-breakdown-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.prox-breakdown-row--dominant {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.prox-breakdown-label {
+  flex: none;
+  width: 70px;
+}
+
+.prox-target-mark {
+  font-size: 0.7rem;
+}
+
+.prox-breakdown-bar {
+  flex: 1 1 auto;
+  height: 6px;
+  background: var(--surface-alt);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.prox-breakdown-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  transition: width 120ms linear;
+}
+
+.prox-breakdown-pct {
+  flex: none;
+  width: 32px;
+  text-align: right;
+  font-family: monospace;
+}
+
+.acoustic-proximity-confidence {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  align-self: flex-start;
+}
+
+.acoustic-proximity-spark {
+  width: 100%;
+  height: 30px;
+  background: var(--surface-alt);
+  border-radius: 4px;
+}
+
+.acoustic-proximity-pie-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  align-self: stretch;
+}
+
+.acoustic-proximity-pie {
+  flex: none;
+  width: 60px;
+  height: 60px;
+  /* drawPieChart() only clears+fills the circle itself (via clearRect, i.e. transparent) — the
+     square canvas's corners outside that circle need their own background, or they show through
+     to the generic `canvas { background: #000 }` rule regardless of theme. */
+  background: var(--surface-alt);
+  border-radius: 50%;
+}
+
+.acoustic-proximity-pie-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.pie-legend-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 0.3rem;
+}
+
+.hud::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--flag-gradient);
+  opacity: 0.7;
+}
+
+.hud-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-btn {
+  width: 1.1rem;
+  height: 1.1rem;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  overflow: hidden;
+}
+
+.info-btn:hover,
+.info-btn[aria-expanded="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--surface-alt);
+}
+
+/* Positioned via JS (fixed, computed from the button's own rect) rather than CSS-relative
+   absolute positioning — see ui/info-bubble.ts for why. */
+.info-bubble {
+  position: fixed;
+  z-index: 200;
+  max-width: 260px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.hud-sparkline {
+  background: var(--surface-alt);
+  border-radius: 4px;
+  display: block;
+}
+
+.hud-label {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.hud-value {
+  color: var(--text);
+  font-size: 1rem;
+  min-width: 3ch;
+}
+
+.hud-meter {
+  width: 90px;
+  height: 10px;
+  background: var(--surface-alt);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.hud-meter-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transition: width 80ms linear;
+}
+
+.hud-ring .hud-meter-fill {
+  background: var(--flag-gradient);
+  background-size: 300% 100%;
+}
+
+.hud-meter-fill--clip {
+  background: #ff4d4d !important;
+}
+
+.hud-range-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  display: inline-block;
+}
+
+.hud-range-dot--in {
+  background: var(--flag-blue);
+  box-shadow: 0 0 6px var(--flag-blue);
+}
+
+/* Main content row: spectrogram views + settings drawer side by side */
+.content-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+canvas {
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.view-2d {
+  display: flex;
+  align-items: stretch;
+  max-width: 1024px;
+  flex: 1 1 480px;
+  min-width: 0;
+}
+
+#freq-ruler-2d {
+  flex: none;
+  width: 90px;
+  height: 480px;
+  border-right: none;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+#spectrogram {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 480px;
+  image-rendering: pixelated;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  cursor: grab;
+  /* Suppress the browser's native touch scroll/pinch-zoom so our own pointer
+     handlers (pan + pinch-to-zoom) get the gesture instead of the page. */
+  touch-action: none;
+}
+
+#spectrogram:active {
+  cursor: grabbing;
+}
+
+.view-3d {
+  position: relative;
+  max-width: 1024px;
+  flex: 1 1 480px;
+  min-width: 0;
+}
+
+#spectrogram-3d {
+  width: 100%;
+  height: 480px;
+  cursor: grab;
+  display: block;
+  /* Suppress the browser's native touch scroll/pinch-zoom so orbit-drag gets the
+     gesture instead of the page — same issue #spectrogram already guards against. */
+  touch-action: none;
+}
+
+#spectrogram-3d:active {
+  cursor: grabbing;
+}
+
+.axis-labels-3d {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* These overlays sit ON TOP OF the 3D canvas, which (like the 2D spectrogram) always stays dark
+   regardless of theme — so their own colors are fixed to match that dark backdrop rather than
+   following var(--text)/var(--accent), which would flip to a dark, illegible color in light mode. */
+.axis-tick-label-3d {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  color: #eef1f6;
+  font: 11px monospace;
+  background: rgba(11, 13, 18, 0.7);
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.camera-presets {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  gap: 0.35rem;
+  z-index: 5;
+}
+
+.camera-presets button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  background: rgba(21, 24, 34, 0.85);
+  color: #eef1f6;
+}
+
+.camera-presets button[aria-pressed="true"] {
+  border-color: var(--flag-blue);
+  color: var(--flag-blue);
+}
+
+/* Settings drawer */
+.settings-drawer {
+  flex: none;
+  width: 250px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+}
+
+.settings-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-drawer h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.settings-header-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.settings-reset-btn {
+  width: auto;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.settings-reset-btn:hover {
+  color: var(--accent);
+}
+
+.settings-group {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-group:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.88rem;
+}
+
+.settings-row select {
+  max-width: 130px;
+}
+
+/* Groups a row's label text with its info button as ONE flex item, so adding the button never
+   disturbs the existing label-left/control-right space-between layout. */
+.settings-label-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.settings-drawer output {
+  color: var(--accent);
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.settings-drawer input[type="range"] {
+  width: 100%;
+  margin-bottom: 0.85rem;
+  accent-color: var(--accent);
+}
+
+.settings-drawer input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent-2);
+}
+
+.settings-drawer input[type="number"] {
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+.settings-subhead {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.settings-note {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.settings-group button:not(.info-btn) {
+  width: 100%;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.settings-group button:last-child {
+  margin-bottom: 0;
+}
+
+/* Modals (History, Exercises) */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1.5rem;
+}
+
+.modal-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.modal-header button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+.modal-header button:hover {
+  color: var(--text);
+  background: none;
+}
+
+.modal-body {
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+}
+
+/* Sessions panel */
+.sessions-header {
+  margin-bottom: 0.75rem;
+}
+
+.sessions-trend {
+  display: block;
+  margin-top: 0.35rem;
+  background: var(--surface-alt);
+  border-radius: 4px;
+  width: 100%;
+  max-width: 100%;
+  height: 40px;
+}
+
+.sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface-alt);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.session-meta {
+  font-size: 0.85rem;
+}
+
+.session-metrics {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.session-card-text {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+  margin-top: 0.2rem;
+}
+
+.session-more-stats {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.session-more-stats summary {
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.78rem;
+  user-select: none;
+}
+
+.session-more-stats-body {
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.session-more-stats .comparison-table {
+  margin-top: 0.5rem;
+}
+
+.progress-trend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.progress-trend-row canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 40px;
+}
+
+.session-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex: none;
+}
+
+.session-actions button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.session-compare-check {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.sessions-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sessions-toolbar button {
+  width: auto;
+  margin-bottom: 0;
+}
+
+.comparison-panel {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.comparison-table th,
+.comparison-table td {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.comparison-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
+/* Exercises panel */
+.exercise-row {
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  background: var(--surface-alt);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.exercise-row button {
+  margin-top: 0.5rem;
+}
+
+.exercise-countdown {
+  font-size: 3rem;
+  font-family: monospace;
+  text-align: center;
+  color: var(--flag-blue);
+  margin: 1rem 0;
+}
+
+.exercise-live-status {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: -0.5rem 0 1rem;
+  min-height: 1.2em;
+}
+
+.onboarding-target-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-target-buttons button {
+  width: auto;
+  flex: 1 1 auto;
+}
+
+.onboarding-target-buttons button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.onboarding-done-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+  font-weight: 600;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.exercise-results {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.exercise-results li {
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-alt);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+/* Narrow viewports: stack the settings drawer and HUD instead of squeezing them
+   sideways, and give touch targets more room since a mouse cursor isn't available
+   to make up for small hit areas. */
+@media (max-width: 860px) {
+  #app {
+    padding: 1rem 0.75rem;
+  }
+
+  .toolbar {
+    gap: 0.5rem;
+  }
+
+  .status {
+    margin-left: 0;
+  }
+
+  .kbd-hint {
+    display: none;
+  }
+
+  .mobile-menu-toggle-btn {
+    display: inline-block;
+  }
+
+  .mobile-menu-toggle-btn[aria-expanded="true"] {
+    background: rgba(245, 169, 184, 0.16);
+    border-color: var(--flag-pink);
+    color: var(--flag-pink);
+  }
+
+  /* A plain class, not the `hidden` attribute — the app-wide `[hidden] { display: none
+     !important; }` rule above would otherwise beat `.mobile-menu-group`'s `display: contents`
+     and hide these buttons on desktop too, with no visible toggle left to bring them back. */
+  .mobile-menu-group.collapsed {
+    display: none;
+  }
+
+  .mobile-menu-group:not(.collapsed) {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  /* Buttons/time keep their natural size and wrap as whole units instead of
+     squeezing — squeezed buttons let their text wrap mid-word, which is what
+     made this bar look broken on narrow screens. The seek bar gets its own
+     full-width row since it's the one control that should stretch. */
+  .playback-bar {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .playback-bar button,
+  .playback-time {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .playback-bar input[type="range"] {
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .playback-time {
+    flex-basis: 100%;
+    order: 2;
+    text-align: center;
+  }
+
+  .hud-row {
+    flex-direction: column;
+  }
+
+  .vowel-chart-panel {
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  .content-row {
+    flex-direction: column;
+  }
+
+  .view-2d,
+  .view-3d {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .settings-drawer {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .settings-row select,
+  select {
+    max-width: none;
+  }
+
+  button:not(.info-btn),
+  .settings-drawer input[type="checkbox"] {
+    min-height: 2.5rem;
+  }
+
+  .settings-drawer input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .session-row {
+    flex-wrap: wrap;
+  }
+
+  .session-actions {
+    flex-wrap: wrap;
+  }
+
+  .modal-backdrop {
+    padding: 0.5rem;
+  }
+
+  .modal-panel {
+    max-height: 92vh;
+  }
+}
+
+@media (max-width: 480px) {
+  #freq-ruler-2d,
+  #spectrogram,
+  #spectrogram-3d {
+    height: 320px;
+  }
+
+  #freq-ruler-2d {
+    width: 56px;
+  }
+}

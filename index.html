@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0d12" />
+    <meta name="description" content="Client-side voice training with live spectrogram and pitch/resonance/weight/inflection feedback — nothing leaves the device." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Voice Trainer" />
+    <title>HRT Voice Trainer</title>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>HRT Voice Trainer</h1>
+        <p class="subtitle">Live spectrogram with pitch/resonance feedback</p>
+      </header>
+      <main>
+        <div class="toolbar">
+          <button id="start-btn" type="button">Start</button>
+          <button id="stop-btn" type="button" disabled>Stop</button>
+          <button id="clear-btn" type="button">Clear</button>
+          <select id="source-select" title="Capture source">
+            <option value="microphone" selected>Microphone</option>
+            <option value="display">Tab/Screen Audio&hellip;</option>
+          </select>
+          <select id="device-select" title="Microphone"></select>
+          <button id="view-toggle-btn" type="button">Switch to 3D</button>
+          <button
+            id="mobile-menu-toggle-btn"
+            type="button"
+            class="mobile-menu-toggle-btn"
+            aria-expanded="false"
+            aria-controls="mobile-menu-group"
+          >
+            &#9776; Menu
+          </button>
+          <div class="mobile-menu-group collapsed" id="mobile-menu-group">
+            <button id="settings-toggle-btn" type="button" aria-expanded="false">&#9881; Settings</button>
+            <button id="history-btn" type="button">History</button>
+            <button id="exercises-btn" type="button">Exercises</button>
+            <button id="practice-cards-btn" type="button">Practice Cards</button>
+            <button id="progress-btn" type="button">Progress</button>
+          </div>
+          <span class="kbd-hint">Space start/stop &middot; C clear</span>
+          <span id="status" class="status">idle</span>
+        </div>
+
+        <div class="install-banner" id="install-banner" hidden>
+          <span id="install-banner-text">Install this app on your device for quick access &mdash; it works offline and nothing ever leaves your device.</span>
+          <button type="button" id="install-btn" hidden>Install</button>
+          <button type="button" id="install-dismiss-btn" aria-label="Dismiss">&times;</button>
+        </div>
+
+        <div class="active-card-banner" id="active-card-banner" hidden>
+          <span class="hud-label">Reading</span>
+          <span id="active-card-text"></span>
+          <button id="active-card-clear-btn" type="button" aria-label="Stop practicing this card">&times;</button>
+        </div>
+
+        <div class="playback-bar" id="playback-bar" hidden>
+          <button id="playback-playpause-btn" type="button">Pause</button>
+          <button id="playback-skip-back-btn" type="button">&laquo; 5s</button>
+          <input type="range" id="playback-seek" min="0" max="1" step="0.01" value="0" />
+          <button id="playback-skip-fwd-btn" type="button">5s &raquo;</button>
+          <span id="playback-time" class="playback-time">0:00 / 0:00</span>
+          <button id="playback-close-btn" type="button">Stop Playback</button>
+        </div>
+
+        <div class="hud-row">
+          <div class="hud" id="hud"></div>
+          <div class="vowel-chart-panel" id="vowel-chart-panel">
+            <div class="vowel-chart-header">
+              <span class="hud-label">Vowel Chart</span>
+              <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-vowel-chart" aria-label="About Vowel Chart">i</button>
+              <div class="info-bubble" id="info-vowel-chart" role="note" hidden>Plots your live F1/F2 (the same two formants shown in the HUD) as a moving dot. Two reference modes: "IPA vowels" (IPA vowels, Hillenbrand et al. 1995) shows which vowel shape your tongue/jaw are making; "M/F clusters" instead shows your position against masculine- and feminine-typical corner-vowel averages (Peterson &amp; Barney 1952 / Hillenbrand et al. 1995) &mdash; population averages with substantial individual overlap, not a category your voice must fall into. Approximate, not diagnostic either way.</div>
+              <button type="button" id="vowel-chart-mode-btn" class="vowel-chart-mode-btn" title="Switch reference: IPA vowels vs. masculine/feminine corner-vowel clusters">IPA vowels</button>
+            </div>
+            <canvas id="vowel-chart" width="200" height="170" role="img" aria-label="Vowel chart: live F1/F2 formant position plotted against reference vowels"></canvas>
+            <div class="vowel-chart-anchor-row">
+              <button type="button" id="calibrate-i-btn">Calibrate /i/</button>
+              <button type="button" id="clear-i-btn">Clear</button>
+              <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-ianchor-drill" aria-label="About the /i/ anchor drill">i</button>
+              <div class="info-bubble" id="info-ianchor-drill" role="note" hidden>Sustain an /i/ ("ee") vowel, then Calibrate &mdash; Hirsch's technique carries that tongue position's F2 across other vowels to brighten resonance consistently. The dashed line on the chart above shows your calibrated F2.</div>
+            </div>
+          </div>
+          <div class="acoustic-proximity-panel" id="acoustic-proximity-panel" hidden></div>
+        </div>
+
+        <div class="content-row">
+          <div class="view-2d" id="view-2d">
+            <canvas id="freq-ruler-2d" width="90" height="480" aria-hidden="true"></canvas>
+            <canvas id="spectrogram" width="1024" height="480" role="img" aria-label="Live spectrogram: frequency vertically, time horizontally scrolling right to left, color indicates loudness"></canvas>
+          </div>
+          <div class="view-3d" id="view-3d" hidden>
+            <canvas id="spectrogram-3d" width="1024" height="480" role="img" aria-label="3D waterfall spectrogram: frequency, time, and loudness as a rotatable, zoomable surface"></canvas>
+            <div id="axis-labels-3d" class="axis-labels-3d"></div>
+            <div class="camera-presets" id="camera-presets" role="group" aria-label="3D camera view">
+              <button type="button" data-preset="top" aria-pressed="true">Top</button>
+              <button type="button" data-preset="front" aria-pressed="false">Front</button>
+              <button type="button" data-preset="side" aria-pressed="false">Side</button>
+              <button type="button" data-preset="oblique" aria-pressed="false">3D</button>
+            </div>
+          </div>
+
+          <aside class="settings-drawer" id="settings-drawer" hidden>
+            <div class="settings-drawer-header">
+              <h2>Settings</h2>
+              <div class="settings-header-actions">
+                <button id="run-setup-again-btn" type="button" class="settings-reset-btn">Run setup again</button>
+                <button id="reset-settings-btn" type="button" class="settings-reset-btn">Reset to defaults</button>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>Theme</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-theme" aria-label="About Theme">i</button>
+                </span>
+                <select id="theme-select">
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
+              </label>
+              <div class="info-bubble" id="info-theme" role="note" hidden>Switches the surrounding app's light/dark appearance. The spectrogram and vowel chart canvases always stay dark regardless &mdash; the color ramp is designed against black, same as any video/image viewer.</div>
+
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>Scale</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-scale" aria-label="About Scale">i</button>
+                </span>
+                <select id="scale-select">
+                  <option value="log">Log</option>
+                  <option value="linear">Linear</option>
+                </select>
+              </label>
+              <div class="info-bubble" id="info-scale" role="note" hidden>Frequency axis spacing. Log (default) matches how pitch is actually perceived &mdash; equal ratios read as equal steps, like piano octaves. Linear spaces frequencies evenly in Hz instead, compressing low-voice-range detail toward the bottom.</div>
+
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>Colors</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-colors" aria-label="About Colors">i</button>
+                </span>
+                <select id="color-scheme-select">
+                  <option value="viridis">Viridis</option>
+                  <option value="rainbow">Rainbow</option>
+                  <option value="hot">Hot</option>
+                  <option value="grayscale">Grayscale</option>
+                </select>
+              </label>
+              <div class="info-bubble" id="info-colors" role="note" hidden>Palette mapping loudness to color on both spectrogram views. Viridis (default) is perceptually-uniform and colorblind-safe; Rainbow matches the classic Chrome Music Lab look; Hot is a black-to-white thermal ramp; Grayscale is the traditional Praat-style look.</div>
+
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>Range</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-range" aria-label="About Range">i</button>
+                </span>
+                <select id="range-select">
+                  <option value="1000">1 kHz</option>
+                  <option value="2000">2 kHz</option>
+                  <option value="5000">5 kHz</option>
+                  <option value="10000" selected>10 kHz</option>
+                  <option value="20000">20 kHz</option>
+                </select>
+              </label>
+              <div class="info-bubble" id="info-range" role="note" hidden>Highest frequency shown on the vertical axis. Lower ranges zoom into the fundamental/formant region; higher ranges also show the 2.8-3.5kHz ring/twang band and sibilants, at the cost of compressing the low range visually.</div>
+
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>Resolution</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-resolution" aria-label="About Resolution">i</button>
+                </span>
+                <select id="resolution-select">
+                  <option value="fine">Fine</option>
+                  <option value="balanced" selected>Balanced</option>
+                  <option value="fast">Fast</option>
+                </select>
+              </label>
+              <div class="info-bubble" id="info-resolution" role="note" hidden>Trade-off between time and frequency precision in the underlying analysis window. Fine gives sharper frequency detail but blurs fast changes over time; Fast tracks quick changes better but blurs frequency detail; Balanced splits the difference.</div>
+
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>LPC order</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-lpc" aria-label="About LPC order">i</button>
+                </span>
+                <select id="lpc-order-select">
+                  <option value="8">8</option>
+                  <option value="10">10</option>
+                  <option value="12" selected>12</option>
+                  <option value="14">14</option>
+                  <option value="16">16</option>
+                  <option value="20">20</option>
+                </select>
+              </label>
+              <div class="info-bubble" id="info-lpc" role="note" hidden>How many resonances the formant estimator (Linear Predictive Coding) tries to fit at once. Higher can resolve closely-spaced formants but risks fitting spurious peaks to noise; lower is more stable but may miss a real formant. 12 is a solid default for adult speech.</div>
+
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>3D history</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-history" aria-label="About 3D history">i</button>
+                </span>
+                <select id="history-select">
+                  <option value="short">Short</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="long">Long</option>
+                </select>
+              </label>
+              <div class="info-bubble" id="info-history" role="note" hidden>How many past time-slices the 3D waterfall keeps visible at once (its scrolling depth). Longer shows more history but uses more GPU memory and processing.</div>
+
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>Chart height</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-chart-height" aria-label="About Chart height">i</button>
+                </span>
+                <select id="chart-height-select">
+                  <option value="short">Short</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="tall">Tall</option>
+                </select>
+              </label>
+              <div class="info-bubble" id="info-chart-height" role="note" hidden>Vertical size of the spectrogram, frequency ruler, and 3D view. Taller gives more frequency resolution on screen; shorter fits more on a small display.</div>
+            </div>
+
+            <div class="settings-group">
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>Brightness</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-brightness" aria-label="About Brightness">i</button>
+                </span>
+                <output id="brightness-value" for="brightness-slider">-20 dB</output>
+              </label>
+              <div class="info-bubble" id="info-brightness" role="note" hidden>Upper bound of the color ramp, in dB. Loudness at or above this level renders at the top color of the scheme &mdash; lower this if loud passages all look the same flat color.</div>
+              <input type="range" id="brightness-slider" min="-40" max="0" step="1" value="-20" />
+
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>Floor</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-floor" aria-label="About Floor">i</button>
+                </span>
+                <output id="floor-value" for="floor-slider">-90 dB</output>
+              </label>
+              <div class="info-bubble" id="info-floor" role="note" hidden>Lower bound of the color ramp, in dB. Loudness at or below this renders as black/silence. Raising this mutes quiet background noise, but how high depends on your specific mic and room.</div>
+              <input type="range" id="floor-slider" min="-110" max="-40" step="1" value="-90" />
+              <button type="button" id="calibrate-noise-btn">Calibrate from mic (3s)</button>
+              <p class="settings-note" id="calibrate-noise-status"></p>
+
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>Mic gain</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-mic-gain" aria-label="About Mic gain">i</button>
+                </span>
+                <output id="mic-gain-value" for="mic-gain-slider">0 dB</output>
+              </label>
+              <div class="info-bubble" id="info-mic-gain" role="note" hidden>Boosts or cuts the live mic signal before analysis and recording &mdash; use this to compensate for a quiet mic, or pull down a hot one that's clipping. Applies to live capture only, not clip playback.</div>
+              <input type="range" id="mic-gain-slider" min="-20" max="20" step="1" value="0" />
+            </div>
+
+            <div class="settings-group">
+              <label class="settings-row">
+                <span class="settings-label-group">
+                  <span>Target range</span>
+                  <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-target-range" aria-label="About Target range">i</button>
+                </span>
+                <select id="target-range-select">
+                  <option value="off" selected>Off</option>
+                  <option value="masculine">Masculine (&lt;130 Hz)</option>
+                  <option value="androgynous">Androgynous (145-175 Hz)</option>
+                  <option value="feminine">Feminine (&gt;180 Hz)</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </label>
+              <div class="info-bubble" id="info-target-range" role="note" hidden>Shades a horizontal band across the pitch range you're aiming for, and lights up the Pitch readout when you're inside it. Presets approximate ASHA's speaking-fundamental-frequency guidance &mdash; not clinical cutoffs. Custom lets you set your own Hz range below.</div>
+              <div class="settings-row" id="custom-target-row" hidden>
+                <input type="number" id="custom-target-min" value="145" min="50" max="1000" style="width: 4.5rem" />
+                <span>&ndash;</span>
+                <input type="number" id="custom-target-max" value="175" min="50" max="1000" style="width: 4.5rem" />
+                <span>Hz</span>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <label class="settings-row"><input type="checkbox" id="input-level-toggle" checked /> <span class="settings-label-group">Input level meter <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-level" aria-label="About Input level meter">i</button></span></label>
+              <div class="info-bubble" id="info-level" role="note" hidden>Raw microphone input level in dB, shown instantly with no smoothing or gating &mdash; use it to check you're loud enough without clipping. It's a gain-staging aid, not an acoustic-quality measure.</div>
+
+              <label class="settings-row"><input type="checkbox" id="pitch-toggle" checked /> <span class="settings-label-group">Pitch readout <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-pitch-readout" aria-label="About Pitch readout">i</button></span></label>
+              <div class="info-bubble" id="info-pitch-readout" role="note" hidden>Fundamental frequency (F0), estimated with the YIN algorithm from how strongly the waveform matches a delayed copy of itself. The note name is the nearest musical pitch.</div>
+
+              <label class="settings-row"><input type="checkbox" id="pitch-trace-toggle" checked /> <span class="settings-label-group">Pitch trace on spectrogram <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-pitch-trace" aria-label="About Pitch trace on spectrogram">i</button></span></label>
+              <div class="info-bubble" id="info-pitch-trace" role="note" hidden>Draws a moving blue dot on the spectrogram/3D view at your live pitch position. Independent of the Pitch readout above &mdash; turn either off without affecting the other.</div>
+
+              <label class="settings-row"><input type="checkbox" id="target-distance-toggle" checked /> <span class="settings-label-group">Target distance <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-target-distance" aria-label="About Target distance">i</button></span></label>
+              <div class="info-bubble" id="info-target-distance" role="note" hidden>How far your pitch is from your Target range band, in Hz &mdash; negative means below the band, positive means above it, zero means you're inside it. A companion to "% in target" (History/Progress): that's a strict hit/miss count, this shows which direction to adjust and by how much. Only meaningful when a Target range is set in Settings.</div>
+
+              <label class="settings-row"><input type="checkbox" id="inflection-toggle" checked /> <span class="settings-label-group">Inflection (pitch variability) <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-inflection" aria-label="About Inflection">i</button></span></label>
+              <div class="info-bubble" id="info-inflection" role="note" hidden>How much your pitch moves around, not just where it sits &mdash; the standard deviation of pitch (in semitones) over roughly the last few seconds of voiced speech. Low = monotone, high = varied/expressive.</div>
+
+              <label class="settings-row"><input type="checkbox" id="cpp-toggle" checked /> <span class="settings-label-group">Weight (CPP) <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-cpp" aria-label="About Weight (CPP)">i</button></span></label>
+              <div class="info-bubble" id="info-cpp" role="note" hidden>Cepstral Peak Prominence &mdash; a standard clinical measure of vocal "weight"/breathiness (Hillenbrand &amp; Houde, 1996). A clean, resonant voice has a sharp cepstral peak; a breathy voice has a flatter one. Higher dB = fuller, less breathy.</div>
+
+              <label class="settings-row"><input type="checkbox" id="hnr-toggle" checked /> <span class="settings-label-group">HNR (harmonic-to-noise ratio) <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-hnr" aria-label="About HNR">i</button></span></label>
+              <div class="info-bubble" id="info-hnr" role="note" hidden>Harmonic-to-Noise Ratio in dB &mdash; how strongly the waveform correlates with a shifted copy of itself at your pitch period. Periodic, clear voice scores high; breathy or noisy voice scores low.</div>
+
+              <label class="settings-row"><input type="checkbox" id="perturbation-toggle" checked /> <span class="settings-label-group">Jitter/Shimmer (approximate) <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-perturbation" aria-label="About Jitter/Shimmer">i</button></span></label>
+              <div class="info-bubble" id="info-perturbation" role="note" hidden>Frame-to-frame percent change in pitch period (jitter) and amplitude (shimmer) &mdash; approximate perturbation indicators, useful as a trend. True clinical jitter/shimmer are measured cycle-by-cycle on individual glottal pulses; this is a coarser ~10ms-frame approximation, not a diagnostic number.</div>
+
+              <label class="settings-row"><input type="checkbox" id="ring-toggle" checked /> <span class="settings-label-group">Ring/Twang meter <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-ring" aria-label="About Ring/Twang meter">i</button></span></label>
+              <div class="info-bubble" id="info-ring" role="note" hidden>Percent of total spectral energy in the 2.8-3.5 kHz "singer's formant" band. More energy there reads as a brighter, more forward, ringing quality.</div>
+
+              <label class="settings-row"><input type="checkbox" id="f1f2-toggle" checked /> <span class="settings-label-group">F1/F2 markers <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-f1f2" aria-label="About F1/F2 markers">i</button></span></label>
+              <div class="info-bubble" id="info-f1f2" role="note" hidden>Numeric F1/F2 readout in the HUD above. F1 relates mostly to jaw/tongue height, F2 to tongue front/back position &mdash; together they shape vowel quality and perceived resonance.</div>
+
+              <label class="settings-row"><input type="checkbox" id="f3-toggle" checked /> <span class="settings-label-group">F3 marker <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-f3" aria-label="About F3 marker">i</button></span></label>
+              <div class="info-bubble" id="info-f3" role="note" hidden>Third vocal-tract resonance (formant), estimated via Linear Predictive Coding. Contributes to "ring"/timbre quality. Noisier frame-to-frame than F1/F2 &mdash; treat it as a coarser trend, not a precise readout.</div>
+
+              <label class="settings-row"><input type="checkbox" id="formant-trace-toggle" checked /> <span class="settings-label-group">F1/F2 trace on spectrogram <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-formant-trace" aria-label="About F1/F2 trace on spectrogram">i</button></span></label>
+              <div class="info-bubble" id="info-formant-trace" role="note" hidden>Draws pink (F1) and gold (F2) dots on the spectrogram/3D view at their live frequency position. Independent of the F1/F2 readout above.</div>
+
+              <label class="settings-row"><input type="checkbox" id="avg-formant-toggle" checked /> <span class="settings-label-group">Average formant <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-avg-formant" aria-label="About Average formant">i</button></span></label>
+              <div class="info-bubble" id="info-avg-formant" role="note" hidden>Mean of whichever formants (F1/F2/F3) are currently detected &mdash; a single rough resonance-brightness indicator.</div>
+
+              <label class="settings-row"><input type="checkbox" id="vowel-toggle" checked /> <span class="settings-label-group">Vowel classification <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-vowel-toggle" aria-label="About Vowel classification">i</button></span></label>
+              <div class="info-bubble" id="info-vowel-toggle" role="note" hidden>Numeric nearest-vowel readout in the HUD above, from the same F1/F2 match used by the Vowel Chart panel.</div>
+
+              <label class="settings-row"><input type="checkbox" id="acoustic-proximity-toggle" /> <span class="settings-label-group">Acoustic Proximity panel <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-acoustic-proximity-toggle" aria-label="About Acoustic Proximity panel">i</button></span></label>
+              <div class="info-bubble" id="info-acoustic-proximity-toggle" role="note" hidden>Off by default. Shows a live pitch/formant-based acoustic-similarity score against masculine/feminine reference averages, plus a session trend and breakdown pie chart. See the panel's own info bubble for the exact formula and its limits &mdash; it is not a gender or "passing" prediction.</div>
+            </div>
+
+            <div class="settings-group">
+              <label class="settings-row"><input type="checkbox" id="record-audio-toggle" /> Record audio for saved sessions</label>
+              <p class="settings-note">Recordings are stored locally in your browser only &mdash; nothing is uploaded anywhere.</p>
+              <label class="settings-row"><input type="checkbox" id="precompute-playback-toggle" /> Precompute analysis on playback</label>
+              <p class="settings-note">Analyzes the whole clip up front so seeking is instant and accurate at any point, at the cost of a short delay before playback starts.</p>
+            </div>
+          </aside>
+        </div>
+
+        <p class="hint" id="hint-2d">Scroll or pinch to zoom, drag to pan, double-click to reset.</p>
+        <p class="hint" id="hint-3d" hidden>Drag to rotate, scroll to zoom.</p>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="history-backdrop" hidden>
+      <div class="modal-panel" id="history-panel">
+        <div class="modal-header">
+          <h2>Session History</h2>
+          <button id="history-close-btn" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body" id="history-body"></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="exercises-backdrop" hidden>
+      <div class="modal-panel" id="exercises-panel">
+        <div class="modal-header">
+          <h2>Guided Exercises</h2>
+          <button id="exercises-close-btn" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body" id="exercises-body"></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="practice-cards-backdrop" hidden>
+      <div class="modal-panel" id="practice-cards-panel">
+        <div class="modal-header">
+          <h2>Practice Cards</h2>
+          <button id="practice-cards-close-btn" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body" id="practice-cards-body"></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="progress-backdrop" hidden>
+      <div class="modal-panel" id="progress-panel-el">
+        <div class="modal-header">
+          <h2>Progress</h2>
+          <button id="progress-close-btn" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body" id="progress-body"></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="onboarding-backdrop" hidden>
+      <div class="modal-panel" id="onboarding-panel">
+        <div class="modal-header">
+          <h2>Welcome</h2>
+          <button id="onboarding-close-btn" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body" id="onboarding-body">
+          <p class="settings-note">
+            A few optional things to set up before you start &mdash; everything here can be changed
+            anytime in Settings, and nothing here ever leaves your device.
+          </p>
+
+          <div class="settings-group">
+            <h3 class="settings-subhead">1. Target range</h3>
+            <p class="settings-note">
+              Pick a pitch range to aim for &mdash; unlocks the "% in target", Target &Delta;, and
+              Acoustic Proximity target-matching features.
+            </p>
+            <div class="onboarding-target-buttons">
+              <button type="button" data-preset="masculine">Masculine</button>
+              <button type="button" data-preset="androgynous">Androgynous</button>
+              <button type="button" data-preset="feminine">Feminine</button>
+              <button type="button" data-preset="off">Skip for now</button>
+            </div>
+            <p class="settings-note" id="onboarding-target-status"></p>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="settings-subhead">2. Recording</h3>
+            <label class="settings-row"><input type="checkbox" id="onboarding-record-toggle" /> Record audio for saved sessions</label>
+            <p class="settings-note">Stored locally in your browser only &mdash; nothing is uploaded anywhere. Off by default.</p>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="settings-subhead">3. Background noise calibration</h3>
+            <p class="settings-note">
+              Stay quiet for a few seconds so we can measure your room/mic's actual noise floor and
+              set it automatically, instead of guessing with a slider.
+            </p>
+            <button type="button" id="onboarding-calibrate-btn">Calibrate now (3s)</button>
+            <p class="settings-note" id="onboarding-calibrate-status"></p>
+          </div>
+
+          <button type="button" id="onboarding-done-btn" class="onboarding-done-btn">Get Started</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

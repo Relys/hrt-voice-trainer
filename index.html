@@ -85,8 +85,9 @@
               <button type="button" id="calibrate-i-btn">Calibrate /i/</button>
               <button type="button" id="clear-i-btn">Clear</button>
               <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-ianchor-drill" aria-label="About the /i/ anchor drill">i</button>
-              <div class="info-bubble" id="info-ianchor-drill" role="note" hidden>Sustain an /i/ ("ee") vowel, then Calibrate &mdash; Hirsch's technique carries that tongue position's F2 across other vowels to brighten resonance consistently. The dashed line on the chart above shows your calibrated F2.</div>
+              <div class="info-bubble" id="info-ianchor-drill" role="note" hidden>Press Start, sustain an /i/ ("ee") vowel, then tap Calibrate &mdash; Hirsch's technique carries that tongue position's F2 across other vowels to brighten resonance consistently. The dashed line on the chart above shows your calibrated F2.</div>
             </div>
+            <p class="settings-note" id="ianchor-status">Not calibrated yet</p>
           </div>
           <div class="acoustic-proximity-panel" id="acoustic-proximity-panel" hidden></div>
         </div>
@@ -418,7 +419,13 @@
           </div>
 
           <div class="settings-group">
-            <h3 class="settings-subhead">3. Background noise calibration</h3>
+            <h3 class="settings-subhead">3. Microphone</h3>
+            <p class="settings-note">Pick which input to use &mdash; this also sets the main Microphone selector.</p>
+            <select id="onboarding-device-select" title="Microphone"></select>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="settings-subhead">4. Background noise calibration</h3>
             <p class="settings-note">
               Stay quiet for a few seconds so we can measure your room/mic's actual noise floor and
               set it automatically, instead of guessing with a slider.

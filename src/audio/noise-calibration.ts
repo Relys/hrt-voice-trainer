@@ -17,12 +17,16 @@ const DEFAULT_CONFIG: AnalysisConfig = { windowSeconds: 0.032, lpcOrder: 12 };
  * else in the app, averages the measured input level, and suggests a Floor setting above it —
  * replacing slider guesswork with an actual measurement of this mic/room's real noise floor.
  */
-export async function calibrateNoiseFloor(durationMs = 3000, onTick?: (remainingMs: number) => void): Promise<NoiseCalibrationResult> {
+export async function calibrateNoiseFloor(
+  durationMs = 3000,
+  onTick?: (remainingMs: number) => void,
+  deviceId?: string,
+): Promise<NoiseCalibrationResult> {
   const levels: number[] = [];
   const handle = await startCapture(
     (result) => levels.push(result.inputLevelDb),
     "microphone",
-    undefined,
+    deviceId,
     DEFAULT_CONFIG,
     { record: false },
   );

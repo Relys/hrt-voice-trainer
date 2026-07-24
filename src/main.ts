@@ -1,6 +1,6 @@
 import "./style.css";
 import { isDisplayCaptureSupported, startCapture, type AnalysisConfig, type CaptureHandle, type CaptureSource } from "./audio/capture.ts";
-import { listAudioInputDevices } from "./audio/devices.ts";
+import { listAudioInputDevices, type AudioInputDevice } from "./audio/devices.ts";
 import { calibrateNoiseFloor } from "./audio/noise-calibration.ts";
 import { startPlayback } from "./audio/playback.ts";
 import { precomputeAnalysis, startPrecomputedPlayback } from "./audio/precompute.ts";
@@ -123,6 +123,7 @@ const clearBtn = document.querySelector<HTMLButtonElement>("#clear-btn")!;
 const statusEl = document.querySelector<HTMLSpanElement>("#status")!;
 const sourceSelect = document.querySelector<HTMLSelectElement>("#source-select")!;
 const deviceSelect = document.querySelector<HTMLSelectElement>("#device-select")!;
+const onboardingDeviceSelect = document.querySelector<HTMLSelectElement>("#onboarding-device-select")!;
 const viewToggleBtn = document.querySelector<HTMLButtonElement>("#view-toggle-btn")!;
 const settingsToggleBtn = document.querySelector<HTMLButtonElement>("#settings-toggle-btn")!;
 const settingsDrawer = document.querySelector<HTMLElement>("#settings-drawer")!;
@@ -224,12 +225,24 @@ vowelChartModeBtn.addEventListener("click", () => {
 
 // Lives next to the Vowel Chart (not in the Settings drawer) since that's exactly where the
 // dashed anchor line it controls is drawn — an active drill, not a passive setting.
+const ianchorStatus = document.querySelector<HTMLElement>("#ianchor-status")!;
+function updateIAnchorStatus(): void {
+  ianchorStatus.textContent = settings.iAnchorF2 !== null ? `Calibrated: F2 ≈ ${Math.round(settings.iAnchorF2)} Hz` : "Not calibrated yet";
+}
+updateIAnchorStatus();
+
 document.querySelector<HTMLButtonElement>("#calibrate-i-btn")!.addEventListener("click", () => {
   const f2 = lastSmoothed?.formants[1]?.frequency;
-  if (f2 !== undefined) settings.iAnchorF2 = f2;
+  if (f2 === undefined) {
+    ianchorStatus.textContent = "No signal — press Start, sustain /i/, then try again.";
+    return;
+  }
+  settings.iAnchorF2 = f2;
+  updateIAnchorStatus();
 });
 document.querySelector<HTMLButtonElement>("#clear-i-btn")!.addEventListener("click", () => {
   settings.iAnchorF2 = null;
+  updateIAnchorStatus();
 });
 
 const feedbackSmoother = new FeedbackSmoother();
@@ -377,6 +390,7 @@ resetSettingsBtn.addEventListener("click", () => {
   rebuildRenderer3d();
   applyChartHeight();
   applyTargetRangeChange();
+  updateIAnchorStatus();
 });
 
 /** Shared by the Settings button and the onboarding modal — measures ~3s of ambient mic input
@@ -389,12 +403,17 @@ async function runNoiseCalibration(btn: HTMLButtonElement, statusEl: HTMLElement
   btn.disabled = true;
   statusEl.textContent = "Listening… stay quiet.";
   try {
-    const result = await calibrateNoiseFloor(3000, (remainingMs) => {
-      statusEl.textContent = `Listening… ${Math.ceil(remainingMs / 1000)}s — stay quiet.`;
-    });
+    const result = await calibrateNoiseFloor(
+      3000,
+      (remainingMs) => {
+        statusEl.textContent = `Listening… ${Math.ceil(remainingMs / 1000)}s — stay quiet.`;
+      },
+      deviceSelect.value || undefined,
+    );
     settings.floorDb = result.recommendedFloorDb;
     settingsPanel.sync();
     statusEl.textContent = `Done — Floor set to ${result.recommendedFloorDb} dB (measured ${Math.round(result.measuredDb)} dB).`;
+    await refreshDeviceList(); // first-ever mic permission grant is often what unlocks real device labels
   } catch (err) {
     statusEl.textContent = `Couldn't calibrate: ${(err as Error).message}`;
   } finally {
@@ -442,19 +461,27 @@ const transport = new PlaybackTransport(
   () => void finishSession(),
 );
 
-async function refreshDeviceList(): Promise<void> {
-  const devices = await listAudioInputDevices();
-  const previous = deviceSelect.value;
-  deviceSelect.innerHTML = "";
+/** Mirrors the same device list into both the main toolbar's selector and the onboarding
+ *  modal's — they always show the same options and stay in sync (see the change listeners
+ *  below), so picking a mic during onboarding carries over into real practice sessions. */
+function populateDeviceSelect(select: HTMLSelectElement, devices: AudioInputDevice[], previous: string): void {
+  select.innerHTML = "";
   for (const device of devices) {
     const option = document.createElement("option");
     option.value = device.deviceId;
     option.textContent = device.label;
-    deviceSelect.appendChild(option);
+    select.appendChild(option);
   }
   if (devices.some((d) => d.deviceId === previous)) {
-    deviceSelect.value = previous;
+    select.value = previous;
   }
+}
+
+async function refreshDeviceList(): Promise<void> {
+  const devices = await listAudioInputDevices();
+  const previous = deviceSelect.value || onboardingDeviceSelect.value;
+  populateDeviceSelect(deviceSelect, devices, previous);
+  populateDeviceSelect(onboardingDeviceSelect, devices, previous);
 }
 
 function setView(next3d: boolean): void {
@@ -876,6 +903,13 @@ window.addEventListener("keydown", (e) => {
 clearBtn.addEventListener("click", () => clearDisplays());
 
 deviceSelect.addEventListener("change", () => {
+  onboardingDeviceSelect.value = deviceSelect.value;
+  if (!handle) return;
+  void start();
+});
+
+onboardingDeviceSelect.addEventListener("change", () => {
+  deviceSelect.value = onboardingDeviceSelect.value;
   if (!handle) return;
   void start();
 });
